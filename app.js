@@ -13,7 +13,7 @@ $(document).ready(function(){
 		$("#model").append(row);
 	}
 	//initialize speed of pieces
-	speed = .3;
+	speed = 400;
 	//start game
 	newGame();
 });
@@ -46,7 +46,7 @@ function newPiece(){
 		board[0][5] = true;
 		board[1][4] = true;
 		board[1][5] = true;
-		moving = [{row:0, col:4},{row:0, col:5},{row:1, col:4},{row:0, col:5}];
+		moving = [{row:0, col:4},{row:0, col:5},{row:1, col:4},{row:1, col:5}];
 	} else if(num <3){
 	//L piece (L)
 		board[1][3] = true;
@@ -70,7 +70,6 @@ function newPiece(){
 		moving = [{row:0, col:3},{row:0, col:4},{row:0, col:5},{row:1, col:4}];
 	} else if(num <6){
 	//S piece
-		//THIS PIECE IS NOT DISPLAYING PROPERLY
 		board[0][4] = true;
 		board[0][5] = true;
 		board[1][3] = true;
@@ -87,41 +86,8 @@ function newPiece(){
 	
 	//move the piece downwards until it hits a square
 	movePiece = setInterval(function(){
-		var hit_block = false;
-		var hit_bottom = false;
-		for(i=moving.length - 1; i>-1; i--){
-			var r = moving[i].row;
-			var c = moving[i].col;
-			board[r][c] = false;
-			board[r+1][c] = true;
-			moving[i] = {row:r+1, col:c};
-			
-			//see if the piece has hit the bottom
-			if(r + 2 >= board.length){
-				hit_bottom = true;
-			} else if(board[r+2][c]){ //see if the piece has hit a block
-				var part_of_piece = false;
-				for(j=0; j<moving.length; j++){
-					if(moving[j].row == r+2 && moving[j].col == c){
-						part_of_piece = true;
-					}
-				}
-				if(!part_of_piece){
-					hit_block = true;
-				}
-			}
-
-		}
-		update_gui();
-		//deal with the piece hitting something
-		if(hit_bottom || hit_block){
-			clearInterval(movePiece);
-			newPiece();
-		}
-		//if(false){
-		//	break;
-		//} 
-	}, speed*1000);
+		moveDown();
+	}, speed);
 	//square is hit
 /*	if(square_hit){
 		check_row_clear();
@@ -134,8 +100,8 @@ function check_row_clear(){
 	//check each row to see if all are filled
 	for(i=0; i<board.length; i++){
 		var filled = true;
-		for(j=0; j<board.length; j++){
-			if(board[i][j]){
+		for(j=0; j<board[0].length; j++){
+			if(!board[i][j]){
 				filled = false;
 				break;
 			}
@@ -144,7 +110,7 @@ function check_row_clear(){
 			//clear row
 			empty_row = new Array(board[0].length);
 			board.splice(i, 1);
-			board.splice(board.length, 0, empty_row);
+			board.splice(0, 0, empty_row);
 		}
 	}
 }
@@ -203,7 +169,7 @@ $(document).keydown(function(e){
 		break;
 		
 		case 39: //right
-		//see if piece can move left
+		//see if piece can move right
 			var can_move = true;
 			for(i=0;i<moving.length;i++){
 				if(moving[i].col == board[0].length - 1){
@@ -211,11 +177,15 @@ $(document).keydown(function(e){
 				}
 			}
 			if(can_move){
-				//move piece left
+				//move piece right
 				for(i=0; i<moving.length; i++){
 					var r = moving[i].row;
 					var c = moving[i].col;
 					board[r][c] = false;
+				}
+				for(i=0; i<moving.length; i++){
+					var r = moving[i].row;
+					var c = moving[i].col;
 					board[r][c+1] = true;
 					moving[i].col = c + 1;			
 				}
@@ -225,7 +195,10 @@ $(document).keydown(function(e){
 		
 		case 40: //down
 			//increase speed of piece
-			//speed = .2;
+			clearInterval(movePiece);
+			movePiece = setInterval(function(){
+				moveDown();
+			}, 50);
 		break;
 		
 		default:
@@ -233,3 +206,46 @@ $(document).keydown(function(e){
    }
 	e.preventDefault();   
 });
+function moveDown(){
+	var hit_block = false;
+	var hit_bottom = false;
+	for(i=moving.length - 1; i>-1; i--){
+		var r = moving[i].row;
+		var c = moving[i].col;
+		board[r][c] = false;
+		board[r+1][c] = true;
+		moving[i] = {row:r+1, col:c};
+		
+		//see if the piece has hit the bottom
+		if(r + 2 >= board.length){
+			hit_bottom = true;
+		} else if(board[r+2][c]){ //see if the piece has hit a block
+			var part_of_piece = false;
+			for(j=0; j<moving.length; j++){
+				if(moving[j].row == r+2 && moving[j].col == c){
+					part_of_piece = true;
+				}
+			}
+			if(!part_of_piece){
+				hit_block = true;
+			}
+		}
+
+	}
+	update_gui();
+	//deal with the piece hitting something
+	if(hit_bottom || hit_block){
+	//piece hits something
+		clearInterval(movePiece); //stop freefall
+		check_row_clear(); //see if a row can be cleared
+		//check to see if the game has been lost
+	//	if(){
+			
+	//	} else {
+			newPiece(); //call down a new piece
+	//	}
+	}
+	//if(false){
+	//	break;
+	//} 
+}
