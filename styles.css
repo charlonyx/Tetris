@@ -1,15 +1,13 @@
-<style type="text/css">
-	body{margin:0;}
-	table{
-		margin-left:auto;
-		margin-right:auto;
-		border-spacing:1px;
-	}
-	tr{
-		height: 20px;
-	}
-	td{
-		width: 18px;
-		border: 1px solid black;
-	}
-</style>
+body{margin:0;}
+table{
+	margin-left:auto;
+	margin-right:auto;
+	border-spacing:1px;
+}
+tr{
+	height: 20px;
+}
+td{
+	width: 18px;
+	border: 1px solid black;
+}
