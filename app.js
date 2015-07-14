@@ -40,6 +40,7 @@ function newPiece(){
 		board[0][5] = true;
 		board[0][6] = true;
 		moving = [{row:0, col:3},{row:0, col:4},{row:0, col:5},{row:0, col:6}];
+		pivot = 0; //pivot is the index in "moving" where the pivot point of the piece is 
 	} else if(num <2){
 	//block piece (O)
 		board[0][4] = true;
@@ -47,6 +48,7 @@ function newPiece(){
 		board[1][4] = true;
 		board[1][5] = true;
 		moving = [{row:0, col:4},{row:0, col:5},{row:1, col:4},{row:1, col:5}];
+		pivot = 1;
 	} else if(num <3){
 	//L piece (L)
 		board[1][3] = true;
@@ -54,6 +56,7 @@ function newPiece(){
 		board[1][5] = true;
 		board[0][5] = true;
 		moving = [{row:0, col:3},{row:0, col:4},{row:0, col:5},{row:1, col:5}];
+		pivot = 0;
 	} else if(num <4){
 	//backwards L piece (J)
 		board[0][3] = true;
@@ -61,6 +64,7 @@ function newPiece(){
 		board[0][5] = true;
 		board[1][3] = true;
 		moving = [{row:0, col:3},{row:0, col:4},{row:0, col:5},{row:1, col:3}];
+		pivot = 2;
 	} else if(num <5){
 	//T piece
 		board[0][3] = true;
@@ -68,6 +72,7 @@ function newPiece(){
 		board[0][5] = true;
 		board[1][4] = true;
 		moving = [{row:0, col:3},{row:0, col:4},{row:0, col:5},{row:1, col:4}];
+		pivot = 1;
 	} else if(num <6){
 	//S piece
 		board[0][4] = true;
@@ -75,6 +80,7 @@ function newPiece(){
 		board[1][3] = true;
 		board[1][4] = true;
 		moving = [{row:0, col:4},{row:0, col:5},{row:1, col:3},{row:1, col:4}];	
+		pivot = 1;
 	} else {
 	//Z piece
 		board[0][3] = true;
@@ -82,6 +88,7 @@ function newPiece(){
 		board[1][4] = true;
 		board[1][5] = true;
 		moving = [{row:0, col:3},{row:0, col:4},{row:1, col:4},{row:1, col:5}];
+		pivot = 0;
 	}
 	
 	//move the piece downwards until it hits a square
@@ -139,8 +146,20 @@ $(document).keydown(function(e){
 		//see if piece can move left
 		var can_move = true;
 		for(i=0;i<moving.length;i++){
-			if(moving[i].col == 0){
-				can_move = false;
+			var r = moving[i].row;
+			var c = moving[i].col;
+			if(c == 0){
+				can_move = false; //piece is on the left edge
+			} else if(board[r][c-1] == true){
+				var part_of_piece = false;
+				for(j=0;j<moving.length;j++){
+					if(moving[j].row == r && moving[j].col == c-1){
+						part_of_piece = true;
+					}
+				}
+				if(!part_of_piece){
+					can_move = false; //there is a block in the way
+				}
 			}
 		}
 		if(can_move){
@@ -149,6 +168,10 @@ $(document).keydown(function(e){
 				var r = moving[i].row;
 				var c = moving[i].col;
 				board[r][c] = false;
+			}
+			for(i=0; i<moving.length; i++){
+				var r = moving[i].row;
+				var c = moving[i].col;
 				board[r][c-1] = true;
 				moving[i].col = c - 1;			
 			}
@@ -158,22 +181,54 @@ $(document).keydown(function(e){
 		
 		case 38: //up
 		//rotate piece clockwise
+			pivot_row = moving[pivot].row;
+			pivot_col = moving[pivot].col
 			for(i=0; i<moving.length; i++){
-				var r = moving[i].row;
-				var c = moving[i].col;
-			//	board[r][c] = false;
-			//	board[][] = true;
-			//	moving[i].col = ;
-			//	moving[i].row = ;
+				if(i != pivot){
+				//move the block if it is not at the pivot point;
+					var r = moving[i].row;
+					var c = moving[i].col;
+					board[r][c] = false;
+				}
 			}
+			update_gui();
+			for(i=0; i<moving.length; i++){
+				if(i != pivot){
+				//move the block if it is not at the pivot point;
+					var r = moving[i].row;
+					var c = moving[i].col;
+					var row_dist = r - pivot_row;
+					var col_dist = c - pivot_col;
+					board[pivot_row + col_dist][pivot_col - row_dist] = true;
+					moving[i] = {row:pivot_row + col_dist, col:pivot_col - row_dist};
+				}
+			}
+			//if the piece has been rotated "offscreen", move it over
+			for(i=0; i<moving.length; i++){
+				//see if the piece is offscreen to the left
+				//see if the piece is offscreen to the right
+			}
+			update_gui();
 		break;
 		
 		case 39: //right
 		//see if piece can move right
 			var can_move = true;
 			for(i=0;i<moving.length;i++){
-				if(moving[i].col == board[0].length - 1){
-					can_move = false;
+				var r = moving[i].row;
+				var c = moving[i].col;
+				if(c == board[0].length - 1){
+					can_move = false; //piece is on the right edge
+				} else if(board[r][c+1] == true){
+					var part_of_piece = false;
+					for(j=0;j<moving.length;j++){
+						if(moving[j].row == r && moving[j].col == c+1){
+							part_of_piece = true;
+						}
+					}
+					if(!part_of_piece){
+						can_move = false; //there is a block in the way
+					}
 				}
 			}
 			if(can_move){
@@ -239,11 +294,17 @@ function moveDown(){
 		clearInterval(movePiece); //stop freefall
 		check_row_clear(); //see if a row can be cleared
 		//check to see if the game has been lost
-	//	if(){
-			
-	//	} else {
+		var game_lost = false;
+		for(i=0; i<moving.length; i++){
+			if(moving[i].row == 0){
+				game_lost = true;
+			}
+		}
+		if(game_lost){
+			console.log('you lose!');
+		} else {
 			newPiece(); //call down a new piece
-	//	}
+		}
 	}
 	//if(false){
 	//	break;
