@@ -13,9 +13,14 @@ $(document).ready(function(){
 		$("#model").append(row);
 	}
 	//initialize speed of pieces
-	speed = 400;
+	speed = 350;
 	//start game
 	newGame();
+	
+	$("#new").on("click", function(){
+		newGame();
+		$("#lose").css("display", "none");
+	});
 });
 
 function newGame(){
@@ -118,6 +123,8 @@ function check_row_clear(){
 			empty_row = new Array(board[0].length);
 			board.splice(i, 1);
 			board.splice(0, 0, empty_row);
+			//increase speed
+			speed -= 5;
 		}
 	}
 }
@@ -183,32 +190,100 @@ $(document).keydown(function(e){
 		//rotate piece clockwise
 			pivot_row = moving[pivot].row;
 			pivot_col = moving[pivot].col
-			for(i=0; i<moving.length; i++){
-				if(i != pivot){
-				//move the block if it is not at the pivot point;
+			var can_rotate = rotateCheck();
+			if(can_rotate){
+				for(i=0; i<moving.length; i++){
+					if(i != pivot){
+					//move the block if it is not at the pivot point;
+						var r = moving[i].row;
+						var c = moving[i].col;
+						board[r][c] = false;
+					}
+				}
+				update_gui();
+				for(i=0; i<moving.length; i++){
+					if(i != pivot){
+					//move the block if it is not at the pivot point;
+						var r = moving[i].row;
+						var c = moving[i].col;
+						var row_dist = r - pivot_row;
+						var col_dist = c - pivot_col;
+						board[pivot_row + col_dist][pivot_col - row_dist] = true;
+						moving[i] = {row:pivot_row + col_dist, col:pivot_col - row_dist};
+					}
+				}
+				//if the piece has been rotated "offscreen", move it over
+				var min_col = 0;
+				var max_col = board[0].length;
+				var min_row = 0;
+				var off_left = false;
+				var off_right = false;
+				var off_top = false;
+				for(i=0; i<moving.length; i++){
 					var r = moving[i].row;
 					var c = moving[i].col;
-					board[r][c] = false;
+					if(c < 0){//see if the piece is offscreen to the left
+						off_left = true;
+						if(c < min_col){
+							min_col = c;
+						}
+					}else if(c >= board[0].length){//see if the piece is offscreen to the right
+						off_right = true;
+						if(c > max_col){
+							max_col = c;
+						}
+					} else if(r < 0){//see if the piece is offscreeen to the top
+						off_top = true;
+						if(r < min_row){
+							min_row = r;
+						}
+					}
 				}
-			}
-			update_gui();
-			for(i=0; i<moving.length; i++){
-				if(i != pivot){
-				//move the block if it is not at the pivot point;
-					var r = moving[i].row;
-					var c = moving[i].col;
-					var row_dist = r - pivot_row;
-					var col_dist = c - pivot_col;
-					board[pivot_row + col_dist][pivot_col - row_dist] = true;
-					moving[i] = {row:pivot_row + col_dist, col:pivot_col - row_dist};
+				//move onscreen if necessary
+				if(off_left){
+					for(i=0; i<moving.length;i++){
+						var r = moving[i].row;
+						var c = moving[i].col;
+						board[r][c] = false;
+					}
+					for(i=0; i<moving.length;i++){
+						var r = moving[i].row;
+						var c = moving[i].col;
+						var dist = 0 - min_col;
+						board[r][c + dist] = true;
+						moving[i].col = c + dist;
+					}				
+				}else if(off_right){
+					for(i=0; i<moving.length;i++){
+						var r = moving[i].row;
+						var c = moving[i].col;
+						board[r][c] = false;
+					}
+					for(i=0; i<moving.length;i++){
+						var r = moving[i].row;
+						var c = moving[i].col;
+						var dist = max_col - board[0].length + 1;
+						board[r][c - dist] = true;
+						moving[i].col = c - dist;
+					}				
+				}else if(off_top){
+					for(i=0; i<moving.length;i++){
+						var r = moving[i].row;
+						var c = moving[i].col;
+						if(r>=0){
+							board[r][c] = false;
+						}
+					}
+					for(i=0; i<moving.length;i++){
+						var r = moving[i].row;
+						var c = moving[i].col;
+						var dist = 0 - min_row;
+						board[r+dist][c] = true;
+						moving[i].row = r + dist;
+					}
 				}
+				update_gui();
 			}
-			//if the piece has been rotated "offscreen", move it over
-			for(i=0; i<moving.length; i++){
-				//see if the piece is offscreen to the left
-				//see if the piece is offscreen to the right
-			}
-			update_gui();
 		break;
 		
 		case 39: //right
@@ -253,7 +328,7 @@ $(document).keydown(function(e){
 			clearInterval(movePiece);
 			movePiece = setInterval(function(){
 				moveDown();
-			}, 50);
+			}, 25);
 		break;
 		
 		default:
@@ -264,10 +339,14 @@ $(document).keydown(function(e){
 function moveDown(){
 	var hit_block = false;
 	var hit_bottom = false;
-	for(i=moving.length - 1; i>-1; i--){
+	for(i=0; i<moving.length; i++){
 		var r = moving[i].row;
 		var c = moving[i].col;
 		board[r][c] = false;
+	}
+	for(i=0; i<moving.length; i++){
+		var r = moving[i].row;
+		var c = moving[i].col;
 		board[r+1][c] = true;
 		moving[i] = {row:r+1, col:c};
 		
@@ -285,7 +364,6 @@ function moveDown(){
 				hit_block = true;
 			}
 		}
-
 	}
 	update_gui();
 	//deal with the piece hitting something
@@ -296,17 +374,40 @@ function moveDown(){
 		//check to see if the game has been lost
 		var game_lost = false;
 		for(i=0; i<moving.length; i++){
-			if(moving[i].row == 0){
+			if(moving[i].row == 1){
 				game_lost = true;
 			}
 		}
 		if(game_lost){
-			console.log('you lose!');
+			$("#lose").css("display", "block");
 		} else {
 			newPiece(); //call down a new piece
 		}
 	}
-	//if(false){
-	//	break;
-	//} 
+}
+
+function rotateCheck(){
+	//see if a block is in the way of rotation
+	var can_move = true;
+	for(i=0; i<moving.length; i++){
+		if(i != pivot){
+		//move the block if it is not at the pivot point;
+			var r = moving[i].row;
+			var c = moving[i].col;
+			var row_dist = r - pivot_row;
+			var col_dist = c - pivot_col;
+			if(board[pivot_row + col_dist][pivot_col - row_dist]){
+				var in_piece = false;
+				for(i=0; i<moving.length; i++){
+					if(moving[i].row == pivot_row + col_dist && moving[i].col == pivot_col - row_dist){
+						in_piece = true;
+					}
+				}
+				if(!in_piece){
+					can_move = false;
+				}
+			} 
+		}
+	}
+	return can_move;
 }
