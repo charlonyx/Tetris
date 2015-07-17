@@ -4,6 +4,13 @@ table{
 	margin-right:auto;
 	border-spacing:1px;
 	margin-top:100px;
+	width:auto;
+	height:auto;
+}
+#game1{
+	float:left;
+}
+#model2{
 }
 tr{
 	height: 20px;
@@ -17,5 +24,11 @@ td{
 	margin-left:auto;
 	margin-right:auto;
 	margin-top:20px;
+	text-align:center;
+}
+#score{
+	margin-left:auto;
+	margin-right:auto;
+	margin-top:10px;
 	text-align:center;
 }
