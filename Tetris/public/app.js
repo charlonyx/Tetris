@@ -22,7 +22,22 @@ $(document).ready(function(){
 		player1.newGame();
 		player2.newGame();
 		$("#lose").css("display", "none");
-	});
+    });
+    
+    var ws = new WebSocket("ws://" + window.location.host);
+    ws.onopen = function () {
+        $("#message").on("keypress", function (e) {
+            if (e.which == 13) {
+                ws.send($("#message").val());
+                $("#messages").append("<p>You: " + $("#message").val() + "</p>");
+                $("#message").val("");
+            }
+        });
+    };
+    ws.onmessage = function (e) {
+        var msg = e.data;
+        $("#messages").append("<p>Them: " + msg + "</p>");
+    };
 });
 
 Player.prototype.newGame = function(){
