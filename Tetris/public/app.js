@@ -1,43 +1,67 @@
-$(document).ready(function(){
-	//initialize empty grid
-	player1 = new Player(1);
-	player2 = new Player(2);
-	for(i=1; i<player1.board.length; i++){
-		var row1 = document.createElement("tr");
-		var row2 = document.createElement("tr");
-		for(j=0; j<player1.board[0].length; j++){
-			var cell1 = document.createElement("td");
-			$(row1).append(cell1);
-			var cell2 = document.createElement("td");
-			$(row2).append(cell2);
-		}
-		$("#model1").append(row1);
-		$("#model2").append(row2);
-	}
-	//start game
-	player1.newGame();
-	player2.newGame();
-	
-	$("#new").on("click", function(){
-		player1.newGame();
-		player2.newGame();
-		$("#lose").css("display", "none");
-    });
-    
-    var ws = new WebSocket("ws://" + window.location.host);
+$(document).ready(function (){
+    //initialize empty game boards
+    ws = new WebSocket("ws://" + window.location.host);
     ws.onopen = function () {
+	    player = new Player();
+	    for(i=1; i<player.board.length; i++){
+		    var row1 = document.createElement("tr");
+		    var row2 = document.createElement("tr");
+            for (j = 0; j < player.board[0].length; j++) {
+			    var cell1 = document.createElement("td");
+			    $(row1).append(cell1);
+			    var cell2 = document.createElement("td");
+			    $(row2).append(cell2);
+		    }
+		    $("#model1").append(row1);
+		    $("#model2").append(row2);
+        }
+
+        //start game
+        player.newGame();
+ 
+        //chat box
         $("#message").on("keypress", function (e) {
             if (e.which == 13) {
-                ws.send($("#message").val());
+                ws.send(JSON.stringify({ type: 'message', msg: $("#message").val()}));
                 $("#messages").append("<p>You: " + $("#message").val() + "</p>");
                 $("#message").val("");
             }
         });
     };
     ws.onmessage = function (e) {
-        var msg = e.data;
-        $("#messages").append("<p>Them: " + msg + "</p>");
+        var type = JSON.parse(e.data).type;
+        var msg = JSON.parse(e.data).msg;
+        if (type == "message") {
+            //display the message in the chat box
+            $("#messages").append("<p>Them: " + msg + "</p>");
+        } else if (type == "board") {
+            //recieve other user's game board
+            var their_board = msg;
+            var their_score = JSON.parse(e.data).score;
+            //update the other player's board
+            $("#model2 td").remove();
+            $("#model2 tr").remove();
+            for (i = 1; i < their_board.length; i++) {
+                var row = document.createElement("tr");
+                for (j = 0; j < their_board[0].length; j++) {
+                    var cell = document.createElement("td");
+                    if (their_board[i][j]) {
+                        $(cell).css("background-color", "#000");
+                    }
+                    $(row).append(cell);
+                }
+                $("#model2").append(row);
+            }
+            //update their score
+            $("#score2").html("Score: " + their_score);
+        }
     };
+
+    //new game button
+    $("#new").on("click", function () {
+        player.newGame();
+        $("#lose").css("display", "none");
+    });
 });
 
 Player.prototype.newGame = function(){
@@ -124,7 +148,7 @@ Player.prototype.newPiece = function(){
 		player.moveDown();
 	}, this.speed);
 
-	update_gui(board, this.num, this.score);
+	update_gui(board, this.score);
 	this.update_next_piece();
 }
 
@@ -147,14 +171,14 @@ Player.prototype.check_row_clear = function(){
 			this.speed -= 10;
 			//increase score
 			this.score += 10;
-			update_gui(this.board, this.num, this.score);
+			update_gui(this.board, this.score);
 		}
 	}
 }
 
-function update_gui(board, num, score){
-	$("#model" + num + " td").remove();
-	$("#model" + num + " tr").remove();
+function update_gui(board, score){
+	$("#model1 td").remove();
+	$("#model1 tr").remove();
 	for(i=1; i<board.length; i++){
 		var row = document.createElement("tr");
 		for(j=0; j<board[0].length; j++){
@@ -164,9 +188,12 @@ function update_gui(board, num, score){
 			}
 			$(row).append(cell);
 		}
-		$("#model" + num).append(row);
+		$("#model1").append(row);
 	}
-	$("#score" + num).html("Score: " + score);	
+    $("#score1").html("Score: " + score);
+    //send your board to the other player
+    ws.send(JSON.stringify({ type: 'board', msg: board, score: score }));
+  //  ws.send({ type: 'board', msg: board, score: score });
 }
 
 Player.prototype.update_next_piece = function(){
@@ -219,8 +246,8 @@ Player.prototype.update_next_piece = function(){
 		next_grid[2][2] = true;	
 	}
 	//update the html grid
-	$("#next_piece" + this.num + " td").remove();
-	$("#next_piece" + this.num + " tr").remove();
+	$("#next_piece1 td").remove();
+	$("#next_piece1 tr").remove();
 	for(i=0; i<next_grid.length; i++){
 		var row = document.createElement("tr");
 		for(j=0; j<next_grid[0].length; j++){
@@ -230,55 +257,33 @@ Player.prototype.update_next_piece = function(){
 			}
 			$(row).append(cell);
 		}
-		$("#next_piece" + this.num).append(row);
+		$("#next_piece1").append(row);
 	}
 }
 
 $(document).keydown(function(e){
 //on keydown
-   switch(e.which) {
-		//BOARD 1
-        case 37: // left (player1)
-			player1.moveLeft();
-		break;
+    switch (e.which) {
+        case 37:// left 
+                player.moveLeft();
+            break;
 		
-		case 38: //up (player1)
-			player1.rotate();
-		break;
+        case 38://up 
+                player.rotate();
+            break;
 		
-		case 39: //right
-			player1.moveRight();
-		break;
+        case 39://right
+                player.moveRight();
+            break;
 		
-		case 40: //down
-			//increase speed of piece
-			clearInterval(player1.movePiece);
-			player1.movePiece = setInterval(function(){
-				player1.moveDown();
-			}, 25);
-		break;
-		
-		//BOARD 2
-		case 65: //a
-			player2.moveLeft();
-		break;
-		
-		case 68: //d
-			player2.moveRight();
-		break;
-		
-		case 83://s
-			//increase speed of piece
-			clearInterval(player2.movePiece);
-			player2.movePiece = setInterval(function(){
-				player2.moveDown();
-			}, 25);
-		break;
-		
-		case 87: //w
-			player2.rotate();
-		break;
-		
+        case 40://down
+                //increase speed of piece
+                clearInterval(player.movePiece);
+                player.movePiece = setInterval(function () {
+                    player.moveDown();
+                }, 25);
+            break;
+
 		default:
 			return;
    }
@@ -316,7 +321,7 @@ Player.prototype.moveDown = function(){
 			}
 		}
 	}
-	update_gui(board, this.num, this.score);
+	update_gui(board, this.score);
 	//deal with the piece hitting something
 	if(hit_bottom || hit_block){
 	//piece hits something
@@ -399,7 +404,7 @@ Player.prototype.moveLeft = function(){
 			board[r][c-1] = true;
 			moving[i].col = c - 1;			
 		}
-		update_gui(board, this.num, this.score);
+		update_gui(board, this.score);
 	}
 }
 
@@ -438,7 +443,7 @@ Player.prototype.moveRight = function(){
 			board[r][c+1] = true;
 			moving[i].col = c + 1;			
 		}
-		update_gui(board, this.num, this.score);
+		update_gui(board,this.score);
 	}
 }
 
@@ -446,7 +451,7 @@ Player.prototype.rotate = function(){
 //rotate piece clockwise
 	var board = this.board;
 	var moving = this.moving;
-	var pivot = this.pivot;
+    var pivot = this.pivot;
 	pivot_row = moving[pivot].row;
 	pivot_col = moving[pivot].col
 	var can_rotate = this.rotateCheck();
@@ -459,7 +464,7 @@ Player.prototype.rotate = function(){
 				board[r][c] = false;
 			}
 		}
-		update_gui(board, this.num, this.score);
+		update_gui(board,this.score);
 		for(i=0; i<moving.length; i++){
 			if(i != pivot){
 			//move the block if it is not at the pivot point;
@@ -541,16 +546,15 @@ Player.prototype.rotate = function(){
 				moving[i].row = r + dist;
 			}
 		}
-		update_gui(board, this.num, this.score);
+		update_gui(board, this.score);
 	}	
 }
 
-function Player(num){
+function Player(){
 	this.board = new Array(21);
 	for(i=0; i<this.board.length; i++){
 		this.board[i] = new Array(10);
 	}	
-	this.num = num;
 	this.score = 0;
 	this.speed = 350;
 	this.next_piece = Math.random() * 7;
